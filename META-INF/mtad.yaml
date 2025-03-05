@@ -1,0 +1,104 @@
+_schema-version: 3.3.0
+ID: NPV
+description: A simple CAP project.
+version: 1.0.0
+modules:
+- name: NPV-srv
+  type: javascript.nodejs
+  path: NPV-srv
+  requires:
+  - name: NPV-auth
+  provides:
+  - name: srv-api
+    properties:
+      srv-url: ${default-url}
+  parameters:
+    buildpack: nodejs_buildpack
+    instances: 1
+- name: NPV-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: NPV-destination-service
+    parameters:
+      content-target: true
+  - name: NPV_html_repo_host
+    parameters:
+      service-key:
+        name: NPV_html_repo_host-key
+  - name: NPV-auth
+    parameters:
+      service-key:
+        name: NPV-auth-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Name: NPV_approuter_NPV_html_repo_host
+          ServiceInstanceName: NPV-html5-app-host-service
+          ServiceKeyName: NPV_html_repo_host-key
+          sap.cloud.service: NPV-approuter
+        - Authentication: OAuth2UserTokenExchange
+          Name: NPV_approuter_NPV_auth
+          ServiceInstanceName: NPV-auth
+          ServiceKeyName: NPV-auth-key
+          sap.cloud.service: NPV-approuter
+        existing_destinations_policy: ignore
+- name: NPV-app-content
+  type: com.sap.application.content
+  path: NPV-app-content
+  requires:
+  - name: NPV_html_repo_host
+    parameters:
+      content-target: true
+resources:
+- name: NPV-auth
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      tenant-mode: dedicated
+      xsappname: NPV-${org}-${space}
+    path: ./xs-security.json
+    service: xsuaa
+    service-plan: application
+- name: NPV-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          - Authentication: NoAuthentication
+            HTML5.DynamicDestination: true
+            HTML5.ForwardAuthToken: true
+            Name: NPV-srv-api
+            ProxyType: Internet
+            Type: HTTP
+            URL: ~{srv-api/srv-url}
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: NPV-destination-service
+    service-plan: lite
+  requires:
+  - name: srv-api
+- name: NPV_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-name: NPV-html5-app-host-service
+    service-plan: app-host
+parameters:
+  deploy_mode: html5-repo
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+  - builder: custom
+    commands:
+    - npm ci
+    - npx cds build --production

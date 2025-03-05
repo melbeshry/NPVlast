@@ -1,0 +1,69 @@
+<mvc:View 
+    controllerName="project1.controller.Sales"
+    xmlns:mvc="sap.ui.core.mvc" 
+    xmlns="sap.m" 
+    xmlns:form="sap.ui.layout.form" 
+    xmlns:core="sap.ui.core">
+    <VBox id="salesVBox">
+        <Title id="salesTitle" text="Sales Input" class="sapUiSmallMarginBottom"/>
+        <form:SimpleForm id="salesForm" editable="true" layout="ResponsiveGridLayout">
+            <form:content>
+                <Label id="unitNpvLabel" text="Unit NPV"/>
+                <Input id="unitNpvInput" type="Number" value="{sales>/unitNpv}"/>
+                <Label id="discountRateLabel" text="Discount Rate (%)"/>
+                <Input id="discountRateInput" type="Number" value="{sales>/discountRate}"/>
+                <Label id="leadIdLabel" text="Lead ID"/>
+                <Input id="leadIdInput" type="Number" value="{sales>/leadId}"/>
+                <Label id="pricePlanLabel" text="Price Plan"/>
+                <Select id="pricePlanSelect" selectedKey="{sales>/pricePlan}" change=".onPricePlanChange">
+                    <items>
+                        <core:Item id="_IDGenItem6" key="" text="Select a plan"/>
+                        <core:Item id="_IDGenItem7" key="1YP" text="1YP"/>
+                        <core:Item id="_IDGenItem8" key="2YP" text="2YP"/>
+                        <core:Item id="_IDGenItem9" key="3YP" text="3YP"/>
+                        <core:Item id="_IDGenItem10" key="4YP" text="4YP"/>
+                        <core:Item id="_IDGenItem11" key="5YP" text="5YP"/>
+                        <core:Item id="_IDGenItem12" key="6YP" text="6YP"/>
+                        <core:Item id="_IDGenItem13" key="7YP" text="7YP"/>
+                        <core:Item id="_IDGenItem14" key="8YP" text="8YP"/>
+                        <core:Item id="_IDGenItem15" key="9YP" text="9YP"/>
+                        <core:Item id="_IDGenItem16" key="10YP" text="10YP"/>
+                        <core:Item id="_IDGenItem17" key="11YP" text="11YP"/>
+                        <core:Item id="_IDGenItem18" key="12YP" text="12YP"/>
+                        <core:Item id="_IDGenItem19" key="13YP" text="13YP"/>
+                        <core:Item id="_IDGenItem20" key="14YP" text="14YP"/>
+                        <core:Item id="_IDGenItem21" key="15YP" text="15YP"/>
+                        <core:Item id="_IDGenItem22" key="16YP" text="16YP"/>
+                        <core:Item id="_IDGenItem23" key="17YP" text="17YP"/>
+                        <core:Item id="_IDGenItem24" key="18YP" text="18YP"/>
+                        <core:Item id="_IDGenItem25" key="19YP" text="19YP"/>
+                        <core:Item id="_IDGenItem26" key="20YP" text="20YP"/>
+                    </items>
+                </Select>
+                <Label id="futureValueLabel" text="Future Value"/>
+                <Input id="futureValueInput" value="{sales>/futureValue}" enabled="false"/>
+                <Label id="npvLabel" text="NPV"/>
+                <Input id="npvInput" value="{sales>/npv}" enabled="false"/>
+            </form:content>
+        </form:SimpleForm>
+
+        <Table id="salesTable" items="{sales>/tableData}">
+            <columns>
+                <Column id="periodColumn">
+                    <Text id="_IDGenText" text="Period"/>
+                </Column>
+                <!-- Dynamic year columns will be added here -->
+            </columns>
+            <items>
+                <ColumnListItem id="salesRow">
+                    <cells>
+                        <Text id="_IDGenText1" text="{sales>period}"/>
+                        <!-- Dynamic cells will be bound here -->
+                    </cells>
+                </ColumnListItem>
+            </items>
+        </Table>
+
+        <Button id="simulateButton" text="Simulate" press=".onSimulate" class="sapUiSmallMarginTop"/>
+    </VBox>
+</mvc:View>

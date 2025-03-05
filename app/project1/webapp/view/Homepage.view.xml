@@ -1,0 +1,16 @@
+<mvc:View controllerName="project1.controller.Homepage"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m">
+    <Page id="_IDGenPage1" title="Real Estate NPV Calculator">
+        <content>
+            <IconTabBar id="tabBar" select=".onTabSelect" selectedKey="{tabBar>/selectedKey}">
+                <items>
+                    <IconTabFilter id="_IDGenIconTabFilter" text="Configuration" key="config" icon="sap-icon://settings"/>
+                    <IconTabFilter id="_IDGenIconTabFilter1" text="Sales" key="sales" icon="sap-icon://sales-order"/>
+                </items>
+            </IconTabBar>
+            <mvc:XMLView id="configView" viewName="project1.view.Configuration" visible="{= ${tabBar>/selectedKey} === 'config'}"/>
+            <mvc:XMLView id="salesView" viewName="project1.view.Sales" visible="{= ${tabBar>/selectedKey} === 'sales'}"/>
+        </content>
+    </Page>
+</mvc:View>

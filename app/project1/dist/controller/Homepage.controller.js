@@ -1,0 +1,2 @@
+sap.ui.define(["sap/ui/core/mvc/Controller","sap/ui/model/json/JSONModel"],function(e,t){"use strict";return e.extend("project1.controller.Homepage",{onInit:function(){var e=new t({selectedKey:"sales"});this.getView().setModel(e,"tabBar")},onTabSelect:function(e){var t=e.getParameter("key");this.getView().getModel("tabBar").setProperty("/selectedKey",t)}})});
+//# sourceMappingURL=Homepage.controller.js.map

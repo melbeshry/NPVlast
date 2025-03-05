@@ -1,0 +1,21 @@
+manifest-Version: 1.0
+Created-By: SAP Application Archive Builder 1.2.18
+
+Name: NPV-srv/data.zip
+MTA-Module: NPV-srv
+Content-Type: application/zip
+
+
+Name: NPV-app-content/resources/data.zip
+MTA-Module: NPV-app-content
+Content-Type: application/zip
+
+
+Name: xs-security.json
+MTA-Resource: NPV-auth
+Content-Type: application/json
+
+
+Name: META-INF/mtad.yaml
+Content-Type: text/plain
+

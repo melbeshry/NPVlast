@@ -1,0 +1,1 @@
+using NPVService as service from '../../srv/service';
