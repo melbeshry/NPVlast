@@ -4,160 +4,189 @@ sap.ui.define([
     "sap/m/Column",
     "sap/m/Text",
     "sap/m/Input",
-    "sap/m/MessageToast"
-  ], function(Controller, JSONModel, Column, Text, Input, MessageToast) {
+    "sap/m/MessageToast",
+    "sap/ui/model/type/String"
+], function(Controller, JSONModel, Column, Text, Input, MessageToast, StringType) {
     "use strict";
-  
+
     return Controller.extend("project1.controller.Configuration", {
-  
+        // Constants for configuration
+        MAX_PERIODS: 20,
+        FIXED_ROWS: ["downpayment", "delivery"],
+
         onInit: function() {
+            // Initialize models
             var oConfigModel = new JSONModel({
-                frequency: "Annual"
+                frequency: "Annual",
+                project: { projectId: "MQR" }
             });
             this.getView().setModel(oConfigModel, "config");
-  
-            var oPeriodsData = {};
-            oPeriodsData["First 4 Months"] = Array(20).fill().map(() => ({ value: "" }));
-            for (var i = 1; i <= 20; i++) {
-                var sKey = i + "YP";
-                oPeriodsData[sKey] = Array(20).fill().map(() => ({ value: "" }));
-            }
-  
-            var oPeriodsModel = new JSONModel(oPeriodsData);
-            console.log("Initial Periods Model:", JSON.stringify(oPeriodsModel.getData(), null, 2));
-            oPeriodsModel.setDefaultBindingMode(sap.ui.model.BindingMode.TwoWay);
-            this.getView().setModel(oPeriodsModel, "periods");
-  
-            var oODataModel = this.getOwnerComponent().getModel("npvModel");
-            this._loadDataFromOData(oODataModel, oConfigModel, oPeriodsModel)
-                .then(() => {
-                    this._createPeriodTable();
-                })
-                .catch((error) => {
-                    console.error("Failed to load data:", error);
-                });
+
+            // Initialize with empty structure
+            this._initializeDataModel();
+            this._createPeriodTable();
+            
+            // Then load data if exists
+            this._loadDataFromBackend();
         },
-  
+
+        _initializeDataModel: function() {
+            var aColumns = [];
+            var aAllRows = this.FIXED_ROWS.map(s => ({ rel_period: s }));
+            
+            // Create columns and period rows
+            for (let i = 1; i <= this.MAX_PERIODS; i++) {
+                let sPeriod = i + "YP";
+                aColumns.push({ header: sPeriod, key: sPeriod });
+                aAllRows.push({ rel_period: sPeriod });
+            }
+
+            // Initialize empty cells
+            aAllRows.forEach(oRow => {
+                oRow.cells = {};
+                aColumns.forEach(oCol => {
+                    oRow.cells[oCol.key] = "";
+                });
+            });
+
+            var oModel = new JSONModel({
+                columns: aColumns,
+                rows: aAllRows
+            });
+            this.getView().setModel(oModel, "periods");
+        },
+
+        _loadDataFromBackend: function() {
+            var oODataModel = this.getOwnerComponent().getModel("npvModel");
+            var oConfigModel = this.getView().getModel("config");
+            var oPeriodsModel = this.getView().getModel("periods");
+            var sProjectId = oConfigModel.getProperty("/project/projectId");
+
+            if (!oODataModel) {
+                console.warn("OData model 'npvModel' not available");
+                return;
+            }
+            this._initializeDataModel();
+            this._createPeriodTable();
+            // Add delay to allow metadata to load
+            setTimeout(function() {
+                var oBinding = oODataModel.bindList("/Configurations", null, null, [
+                    new sap.ui.model.Filter("project/projectId", sap.ui.model.FilterOperator.EQ, sProjectId)
+                ], { $expand: "periods" });
+
+                oBinding.requestContexts().then(function(aContexts) {
+                    if (aContexts.length > 0) {
+                        var oConfig = aContexts[0].getObject();
+                        // Update frequency only if it exists in the loaded data
+                        if (oConfig.frequency) {
+                            oConfigModel.setProperty("/frequency", oConfig.frequency);
+                        }
+                        this._updateModelWithLoadedData(oConfig.periods ? oConfig.periods : []);
+                        this._createPeriodTable(); // Recreate table to reflect new data
+                    } else {
+                        // If no data, ensure frequency stays as default "Annual"
+                        oConfigModel.setProperty("/frequency", "Annual");
+                        this._initializeDataModel();
+                        this._createPeriodTable();
+                    }
+                }.bind(this)).catch(function(oError) {
+                    console.error("Error loading data:", oError);
+                    // Fallback to default frequency and empty structure on error
+                    oConfigModel.setProperty("/frequency", "Annual");
+                    this._initializeDataModel();
+                    this._createPeriodTable();
+                }.bind(this));
+            }.bind(this), 500); // 500ms delay
+        },
+
+        _updateModelWithLoadedData: function(aPeriodsData) {
+            var oPeriodsModel = this.getView().getModel("periods");
+            var aRows = oPeriodsModel.getProperty("/rows");
+
+            aPeriodsData.forEach(function(oPeriod) {
+                var oRow = aRows.find(r => r.rel_period === oPeriod.rel_period);
+                if (oRow && oPeriod.orig_period in oRow.cells) {
+                    oRow.cells[oPeriod.orig_period] = oPeriod.value !== null ? oPeriod.value.toString() : "";
+                }
+            });
+
+            oPeriodsModel.setProperty("/rows", aRows);
+        },
+
         _createPeriodTable: function() {
             var oTable = this.byId("periodsTable");
-            var oPeriodsModel = this.getView().getModel("periods");
-            var oData = oPeriodsModel.getData();
-  
-            oTable.removeAllColumns();
+            oTable.destroyColumns();
             oTable.unbindItems();
-  
-            var MAX_YP = 20;
-  
+
+            // Add fixed column for row headers
             oTable.addColumn(new Column({
-                header: new Text({ text: "Period Name" })
+                header: new Text({ text: "Period" }),
+                width: "150px"
             }));
-  
-            for (var i = 1; i <= MAX_YP; i++) {
+
+            // Add period columns
+            var aColumns = this.getView().getModel("periods").getProperty("/columns");
+            aColumns.forEach(oCol => {
                 oTable.addColumn(new Column({
-                    header: new Text({ text: i + "YP" })
+                    header: new Text({ text: oCol.header }),
+                    width: "100px"
                 }));
-            }
-  
+            });
+
+            // Bind items with dynamic row creation
             oTable.bindItems({
-                path: "periods>/",
+                path: "periods>/rows",
                 factory: function(sId, oContext) {
-                    var sPeriodKey = oContext.getPath().split("/").pop();
-                    var aCells = [];
-  
-                    aCells.push(new Text({ text: sPeriodKey }));
-  
-                    for (var colIndex = 1; colIndex <= MAX_YP; colIndex++) {
-                        if (sPeriodKey === "First 4 Months") {
-                            var idxF4M = colIndex - 1;
+                    var oRow = oContext.getObject();
+                    var sRelPeriod = oRow.rel_period;
+                    var iRowIndex = this.getView().getModel("periods").getProperty("/rows").indexOf(oRow);
+                    var aColumns = this.getView().getModel("periods").getProperty("/columns");
+                    var aCells = [new Text({ text: sRelPeriod })];
+
+                    aColumns.forEach(oCol => {
+                        var nColPeriod = parseInt(oCol.key.replace("YP", ""), 10);
+                        var nRowPeriod = this.FIXED_ROWS.length + (iRowIndex - this.FIXED_ROWS.length);
+                        if (iRowIndex < this.FIXED_ROWS.length || (nRowPeriod <= nColPeriod + 1)) {
                             aCells.push(new Input({
-                                value: "{periods>/" + sPeriodKey + "/" + idxF4M + "/value}",
+                                value: {
+                                    path: `periods>cells/${oCol.key}`,
+                                    type: new StringType()
+                                },
+                                liveChange: this._onCellChange.bind(this, oCol.key),
                                 type: "Number",
-                                change: this._onInputChange.bind(this)
+                                placeholder: "0-100"
                             }));
                         } else {
-                            var n = parseInt(sPeriodKey.replace("YP", ""), 10);
-                            if (!isNaN(n) && colIndex >= n) {
-                                var arrayIndex = colIndex - n;
-                                aCells.push(new Input({
-                                    value: "{periods>/" + sPeriodKey + "/" + arrayIndex + "/value}",
-                                    type: "Number",
-                                    change: this._onInputChange.bind(this)
-                                }));
-                            } else {
-                                aCells.push(new Text({ text: "" }));
-                            }
+                            aCells.push(new Text({ text: "" }));
                         }
-                    }
-  
+                    });
+
                     return new sap.m.ColumnListItem({ cells: aCells });
                 }.bind(this)
             });
         },
-  
-        _onInputChange: function(oEvent) {
+
+        _onCellChange: function(sColumnKey, oEvent) {
             var oInput = oEvent.getSource();
             var sValue = oInput.getValue().trim();
-            var sPath = oInput.getBinding("value").getPath();
-            var sFullPath = "/periods" + sPath;
-            var oModel = this.getView().getModel("periods");
-  
-            console.log("Full Path:", sFullPath, "New Value:", sValue, "Current Model Value:", oModel.getProperty(sFullPath));
-  
+            var oContext = oInput.getBindingContext("periods");
+
             if (sValue === "") {
-                // Two-way binding will handle this
+                oContext.getModel().setProperty(oContext.getPath() + "/cells/" + sColumnKey, "");
                 return;
             }
-  
+
             var fValue = parseFloat(sValue);
             if (isNaN(fValue) || fValue < 0 || fValue > 100) {
                 oInput.setValueState("Error");
                 oInput.setValueStateText("Please enter a valid number between 0 and 100.");
                 MessageToast.show("Please enter a valid number between 0 and 100.");
-                // Let user correct it; don't revert manually
             } else {
-                oInput.setValueState("None"); // Clear any error state
-                // Two-way binding updates the model automatically
+                oInput.setValueState("None");
+                oContext.getModel().setProperty(oContext.getPath() + "/cells/" + sColumnKey, fValue.toString());
             }
         },
-  
-        _loadDataFromOData: function(oODataModel, oConfigModel, oPeriodsModel) {
-            if (!oODataModel) {
-                console.warn("OData model not found; skipping load");
-                return Promise.resolve();
-            }
-  
-            return oODataModel.bindList("/Configurations", undefined, undefined, undefined, {
-                $expand: "periods($expand=percentages)"
-            }).requestContexts().then(function(aContexts) {
-                if (aContexts.length > 0) {
-                    var oConfig = aContexts[0].getObject();
-                    oConfigModel.setData({
-                        frequency: oConfig.frequency,
-                        lastUpdatedBy: oConfig.lastUpdatedBy || "Unknown"
-                    });
-  
-                    var defaultData = oPeriodsModel.getData();
-                    var mergedData = { ...defaultData };
-                    if (oConfig.periods) {
-                        var aPeriods = oConfig.periods.results || oConfig.periods;
-                        aPeriods.forEach(function(period) {
-                            var sPeriodName = period.periodName;
-                            var aPercentages = period.percentages.results || period.percentages;
-                            mergedData[sPeriodName] = Array(20).fill().map((_, idx) => ({
-                                value: aPercentages[idx] && aPercentages[idx].value != null 
-                                    ? aPercentages[idx].value.toString() 
-                                    : ""
-                            }));
-                        });
-                    }
-                    oPeriodsModel.setData(mergedData);
-                    console.log("Merged Periods Model:", JSON.stringify(mergedData, null, 2));
-                } else {
-                    console.log("No Configurations found; using defaults.");
-                }
-            });
-        },
-  
+
         onSave: function() {
             var oPeriodsModel = this.getView().getModel("periods");
             var oConfigModel = this.getView().getModel("config");
@@ -166,36 +195,54 @@ sap.ui.define([
                 return;
             }
         
-            var oPeriodsData = oPeriodsModel.getData();
-            for (var periodName in oPeriodsData) {
-                var total = 0;
-                oPeriodsData[periodName].forEach(function(obj) {
-                    var val = parseFloat(obj.value) || 0;
-                    total += val;
+            var oPeriodsData = oPeriodsModel.getProperty("/rows");
+            var aRows = oPeriodsModel.getProperty("/rows");            
+            // Validation: For each orig_period, if any value exists where rel_period ≠ orig_period, ensure value = 100 where rel_period = orig_period
+            var hasValidationError = false;
+            var aOrigPeriods = oPeriodsModel.getProperty("/columns").map(col => col.key);
+        
+            aOrigPeriods.forEach(function(origPeriod) {
+                var aRelatedValues = [];
+                aRows.forEach(oRow => {
+                    if (oRow.rel_period !== origPeriod && oRow.cells[origPeriod] !== "") {
+                        aRelatedValues.push(parseFloat(oRow.cells[origPeriod]));
+                    }
                 });
-                if (total > 100) {
-                    MessageToast.show(
-                        `Total for ${periodName} exceeds 100% (${total.toFixed(2)}%). Please correct.`
-                    );
-                    return;
+                if (aRelatedValues.length > 0) {
+                    var selfIntersection = aRows.find(r => r.rel_period === origPeriod);
+                    if (selfIntersection) {
+                        var selfValue = parseFloat(selfIntersection.cells[origPeriod]);
+                        if (isNaN(selfValue) || Math.abs(selfValue - 100) > 0.01) {
+                            console.error(`Validation failed for ${origPeriod}: Self-intersection (${origPeriod}@${origPeriod}) must be 100%, got ${selfValue || "undefined"}`);
+                            hasValidationError = true;
+                        }
+                    }
                 }
+            });
+        
+            if (hasValidationError) {
+                MessageToast.show("Validation failed: Self-intersection of each populated period must be 100%.");
+                return;
             }
         
             var oConfigData = oConfigModel.getData();
-            var aPeriodsPayload = Object.keys(oPeriodsData).map(function(periodName) {
-                return {
-                    periodName: periodName,
-                    percentages: oPeriodsData[periodName].map(function(obj, idx) {
-                        return {
-                            index: idx,
-                            value: parseFloat(obj.value) || 0
-                        };
-                    })
-                };
+            var aPeriodsPayload = [];
+            oPeriodsData.forEach(function(oRow) {
+                aOrigPeriods.forEach(function(origPeriod) {
+                    var sValue = oRow.cells[origPeriod];
+                    if (sValue !== "") {
+                        aPeriodsPayload.push({
+                            orig_period: origPeriod,
+                            rel_period: oRow.rel_period,
+                            value: parseFloat(sValue) || 0
+                        });
+                    }
+                });
             });
         
             var oPayload = {
                 frequency: oConfigData.frequency,
+                project: { projectId: oConfigData.project.projectId }, // Use current projectId
                 periods: aPeriodsPayload
             };
             console.log("Payload:", JSON.stringify(oPayload, null, 2));
@@ -207,42 +254,40 @@ sap.ui.define([
                 return;
             }
         
-            // Check if a configuration exists
-            oODataModel.bindList("/Configurations").requestContexts().then(function(aContexts) {
+            // Check for existing configuration with the current projectId
+            var sProjectId = oConfigData.project.projectId;
+            oODataModel.bindList("/Configurations", null, null, [
+                new sap.ui.model.Filter("project/projectId", sap.ui.model.FilterOperator.EQ, sProjectId)
+            ]).requestContexts().then(function(aContexts) {
                 if (aContexts.length > 0) {
                     // Update existing configuration
-                    var oContext = aContexts[0]; // Get the context of the first configuration
+                    var oContext = aContexts[0]; // Get the context of the matching configuration
                     var sConfigId = oContext.getObject().ID;
         
-                    // Bind to the specific entity and get the context
                     var oBinding = oODataModel.bindContext(`/Configurations(${sConfigId})`);
                     oBinding.requestObject().then(function(oEntityData) {
-                        // Update the frequency property
                         oBinding.getBoundContext().setProperty("frequency", oPayload.frequency);
         
-                        // Handle nested periods
                         var oPeriodsBinding = oODataModel.bindList(`/Configurations(${sConfigId})/periods`);
                         oPeriodsBinding.requestContexts().then(function(aPeriodContexts) {
-                            // Delete existing periods
-                            aPeriodContexts.forEach(function(oPeriodContext) {
-                                oPeriodContext.delete();
-                            });
-        
-                            // Create new periods
-                            oPayload.periods.forEach(function(period) {
-                                oPeriodsBinding.create({
-                                    periodName: period.periodName,
-                                    percentages: period.percentages
+                            Promise.all(aPeriodContexts.map(ctx => ctx.delete())).then(function() {
+                                Promise.all(oPayload.periods.map(function(period) {
+                                    return oPeriodsBinding.create(period);
+                                })).then(function() {
+                                    oODataModel.submitBatch("updateGroup").then(function() {
+                                        MessageToast.show("Data updated successfully!");
+                                        console.log("Update successful");
+                                    }).catch(function(oError) {
+                                        console.error("Error updating data:", oError);
+                                        MessageToast.show("Failed to update data: " + oError.message);
+                                    });
+                                }).catch(function(oError) {
+                                    console.error("Error creating periods:", oError);
+                                    MessageToast.show("Failed to create periods: " + oError.message);
                                 });
-                            });
-        
-                            // Submit all changes
-                            oODataModel.submitBatch("updateGroup").then(function() {
-                                MessageToast.show("Data updated successfully!");
-                                console.log("Update successful");
                             }).catch(function(oError) {
-                                console.error("Error updating data:", oError);
-                                MessageToast.show("Failed to update data: " + oError.message);
+                                console.error("Error deleting periods:", oError);
+                                MessageToast.show("Failed to delete periods: " + oError.message);
                             });
                         }).catch(function(oError) {
                             console.error("Error managing periods:", oError);
@@ -265,7 +310,6 @@ sap.ui.define([
                         }
                     });
         
-                    // Submit the batch for creation
                     oODataModel.submitBatch("updateGroup").then(function() {
                         console.log("Batch submitted for creation");
                     }).catch(function(oError) {
@@ -277,6 +321,13 @@ sap.ui.define([
                 console.error("Error checking existing configurations:", oError);
                 MessageToast.show("Error accessing service: " + oError.message);
             });
+        },
+
+        onProjectChange: function(oEvent) {
+            var sProjectId = oEvent.getParameter("selectedItem").getKey();
+            this.getView().getModel("config").setProperty("/project/projectId", sProjectId);
+            this._loadDataFromBackend();
+            this._createPeriodTable(); // Recreate table to reflect new data
         }
     });
-  });
+});

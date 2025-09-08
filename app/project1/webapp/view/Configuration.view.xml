@@ -5,6 +5,20 @@
     xmlns:core="sap.ui.core">
     <VBox id="_IDGenVBox2" class="sapUiSmallMargin">
         <Button id="saveButton" text="Save" press=".onSave" class="sapUiTinyMarginTop"/>
+        <Label id="_IDGenLabel2" text="Project"/>
+        <Select
+            id="projectSelect"
+            selectedKey="{config>/project/projectId}"
+            forceSelection="false"
+            change="onProjectChange">
+            <items>
+                <core:Item id="_IDGenItem5" key="MQR" text="MQR"/>
+                <core:Item id="_IDGenItem27" key="MQ" text="MQ"/>
+                <core:Item id="_IDGenItem28" key="MW" text="MW"/>
+                <core:Item id="_IDGenItem29" key="MWV" text="MWV"/>
+                <core:Item id="_IDGenItem30" key="MPE" text="MPE"/>
+            </items>
+        </Select>
         <Label id="_IDGenLabel" text="Frequency" />
         <Select id="frequencySelect" selectedKey="{config>/frequency}" change=".onFrequencyChange">
             <items>
@@ -18,16 +32,12 @@
         <ScrollContainer id="_IDGenScrollContainer" horizontal="true" vertical="true" height="700px">
             <Table id="periodsTable" items="{periods>/}">
                 <columns>
-                    <Column id="_IDGenColumn">
-                        <Text id="_IDGenText2" text="Period" />
-                    </Column>
-                    <!-- Dynamic columns for percentages will be added in controller -->
+                    <!-- Columns will be added dynamically by the controller -->
                 </columns>
                 <items>
-                    <ColumnListItem id="_IDGenColumnListItem1">
+                    <ColumnListItem id="_IDGenColumnListItem">
                         <cells>
-                            <Text id="_IDGenText3" text="{periods>periodName}" />
-                            <!-- Dynamic cells will be added in controller -->
+                            <!-- Cells will be added dynamically by the controller -->
                         </cells>
                     </ColumnListItem>
                 </items>

@@ -70,7 +70,11 @@
           "autoExpandSelect": true,
           "earlyRequests": true
         }
-      }
+      },
+      "user": {
+    "type": "sap.ui.model.json.JSONModel",
+    "data": {}
+  }
     },
     "resources": {
       "css": [

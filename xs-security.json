@@ -6,6 +6,14 @@
     {
       "name": "uaa.user",
       "description": "UAA"
+    },
+    {
+      "name": "$XSAPPNAME.ConfigAdmin",
+      "description": "Access to Config view"
+    },
+    {
+      "name": "$XSAPPNAME.SalesAdmin",
+      "description": "Access to Sales view"
     }
   ],
   "role-templates": [
@@ -15,7 +23,32 @@
       "scope-references": [
         "uaa.user"
       ]
+    },
+    {
+      "name": "ConfigAdmin",
+      "description": "Role for Config view access",
+      "scope-references": ["$XSAPPNAME.ConfigAdmin"]
+    },
+    {
+      "name": "SalesAdmin",
+      "description": "Role for Sales view access",
+      "scope-references": ["$XSAPPNAME.SalesAdmin"]
     }
   ],
-  "attributes": []
+  "role-collections": [
+    {
+      "name": "ConfigRoleCollection",
+      "description": "Role collection for Config access",
+      "role-template-references": ["$XSAPPNAME.ConfigAdmin"]
+    },
+    {
+      "name": "SalesRoleCollection",
+      "description": "Role collection for Sales access",
+      "role-template-references": ["$XSAPPNAME.SalesAdmin"]
+    }
+  ],
+  "attributes": [],
+  "oauth2-configuration": {
+    "redirect-uris": ["http://localhost:4004"]
+  }
 }

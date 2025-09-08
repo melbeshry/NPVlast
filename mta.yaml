@@ -9,6 +9,7 @@ modules:
     requires:
       - name: NPV-auth
       - name: NPV-db
+      - name: NPV-postgres
     provides:
       - name: srv-api
         properties:
@@ -80,6 +81,19 @@ modules:
         - npm run build:cf
       supported-platforms:
         []
+
+  - name: NPV-postgres-deployer
+    type: nodejs
+    path: gen/pg
+    parameters:
+      buildpack: nodejs_buildpack
+      no-route: true
+      no-start: true
+      tasks:
+        - name: deploy-to-postgresql
+          command: npm start
+    requires:
+      - name: NPV-postgres
 resources:
   - name: NPV-db
     type: com.sap.xs.hdi-container
@@ -128,6 +142,11 @@ resources:
       service: html5-apps-repo
       service-name: NPV-html5-app-host-service
       service-plan: app-host
+  - name: NPV-postgres
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: postgresql-db
+      service-plan: development
 parameters:
   deploy_mode: html5-repo
   enable-parallel-deployments: true

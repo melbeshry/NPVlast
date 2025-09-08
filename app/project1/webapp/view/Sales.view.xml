@@ -8,12 +8,27 @@
         <Title id="salesTitle" text="Sales Input" class="sapUiSmallMarginBottom"/>
         <form:SimpleForm id="salesForm" editable="true" layout="ResponsiveGridLayout">
             <form:content>
+                <Label id="_IDGenLabel3" text="Project"/>
+                <Select
+                    id="projectSelectSales"
+                    selectedKey="{sales>/project/projectId}"
+                    forceSelection="false"
+                    change="onProjectChange">
+                    <items>
+                        <core:Item id="_IDGenItem31" key="" text="Select a project" />
+                    </items>
+                </Select>
                 <Label id="unitNpvLabel" text="Unit NPV"/>
                 <Input id="unitNpvInput" type="Number" value="{sales>/unitNpv}"/>
                 <Label id="discountRateLabel" text="Discount Rate (%)"/>
                 <Input id="discountRateInput" type="Number" value="{sales>/discountRate}"/>
                 <Label id="leadIdLabel" text="Lead ID"/>
                 <Input id="leadIdInput" type="Number" value="{sales>/leadId}"/>
+                <DatePicker
+                id="deliveryPaymentDate"
+                value="{path: 'sales>/deliveryPaymentDate', type: 'sap.ui.model.type.Date', formatOptions: { style: 'medium', UTC: true }}"
+                placeholder="Select Delivery Payment Date"
+                change="onDeliveryDateChange"/>
                 <Label id="pricePlanLabel" text="Price Plan"/>
                 <Select id="pricePlanSelect" selectedKey="{sales>/pricePlan}" change=".onPricePlanChange">
                     <items>

@@ -200,7 +200,6 @@ sap.ui.define([
             };
             console.log("Payload:", JSON.stringify(oPayload, null, 2));
         
-            // Use the OData model instead of fetch
             var oODataModel = this.getOwnerComponent().getModel("npvModel");
             if (!oODataModel) {
                 console.error("OData model not found.");
@@ -208,24 +207,54 @@ sap.ui.define([
                 return;
             }
         
-            // Check if a configuration exists to decide between create or update
+            // Check if a configuration exists
             oODataModel.bindList("/Configurations").requestContexts().then(function(aContexts) {
                 if (aContexts.length > 0) {
                     // Update existing configuration
-                    var sConfigId = aContexts[0].getObject().ID;
-                    oODataModel.update(`/Configurations(${sConfigId})`, oPayload, {
-                        success: function() {
-                            MessageToast.show("Data updated successfully!");
-                            console.log("Update successful");
-                        },
-                        error: function(oError) {
-                            console.error("Error updating data:", oError);
-                            MessageToast.show("Failed to update data: " + oError.message);
-                        }
+                    var oContext = aContexts[0]; // Get the context of the first configuration
+                    var sConfigId = oContext.getObject().ID;
+        
+                    // Bind to the specific entity and get the context
+                    var oBinding = oODataModel.bindContext(`/Configurations(${sConfigId})`);
+                    oBinding.requestObject().then(function(oEntityData) {
+                        // Update the frequency property
+                        oBinding.getBoundContext().setProperty("frequency", oPayload.frequency);
+        
+                        // Handle nested periods
+                        var oPeriodsBinding = oODataModel.bindList(`/Configurations(${sConfigId})/periods`);
+                        oPeriodsBinding.requestContexts().then(function(aPeriodContexts) {
+                            // Delete existing periods
+                            aPeriodContexts.forEach(function(oPeriodContext) {
+                                oPeriodContext.delete();
+                            });
+        
+                            // Create new periods
+                            oPayload.periods.forEach(function(period) {
+                                oPeriodsBinding.create({
+                                    periodName: period.periodName,
+                                    percentages: period.percentages
+                                });
+                            });
+        
+                            // Submit all changes
+                            oODataModel.submitBatch("updateGroup").then(function() {
+                                MessageToast.show("Data updated successfully!");
+                                console.log("Update successful");
+                            }).catch(function(oError) {
+                                console.error("Error updating data:", oError);
+                                MessageToast.show("Failed to update data: " + oError.message);
+                            });
+                        }).catch(function(oError) {
+                            console.error("Error managing periods:", oError);
+                            MessageToast.show("Failed to manage periods: " + oError.message);
+                        });
+                    }).catch(function(oError) {
+                        console.error("Error fetching entity data:", oError);
+                        MessageToast.show("Failed to fetch entity data: " + oError.message);
                     });
                 } else {
                     // Create new configuration
-                    oODataModel.bindList().create()("/Configurations", oPayload, {
+                    oODataModel.bindList("/Configurations").create(oPayload, {
                         success: function() {
                             MessageToast.show("Data saved successfully!");
                             console.log("Create successful");
@@ -234,6 +263,14 @@ sap.ui.define([
                             console.error("Error saving data:", oError);
                             MessageToast.show("Failed to save data: " + oError.message);
                         }
+                    });
+        
+                    // Submit the batch for creation
+                    oODataModel.submitBatch("updateGroup").then(function() {
+                        console.log("Batch submitted for creation");
+                    }).catch(function(oError) {
+                        console.error("Batch submission failed:", oError);
+                        MessageToast.show("Failed to submit batch: " + oError.message);
                     });
                 }
             }).catch(function(oError) {
