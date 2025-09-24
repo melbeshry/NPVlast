@@ -5,8 +5,9 @@ sap.ui.define([
     "sap/m/Text",
     "sap/m/Input",
     "sap/m/MessageToast",
-    "sap/ui/model/type/String"
-], function(Controller, JSONModel, Column, Text, Input, MessageToast, StringType) {
+    "sap/ui/model/type/String",
+    "sap/m/MessageBox"
+], function(Controller, JSONModel, Column, Text, Input, MessageToast, StringType, MessageBox) {
     "use strict";
 
     return Controller.extend("project1.controller.Configuration", {
@@ -15,6 +16,12 @@ sap.ui.define([
         FIXED_ROWS: ["downpayment", "delivery"],
 
         onInit: function() {
+            // Initialize flags for preventing multiple operations
+            this._isSaving = false;
+            this._hasUnsavedChanges = false;
+            this._initialDataSnapshot = null;
+            this._lastSaveTime = 0;
+            
             // Initialize models
             var oConfigModel = new JSONModel({
                 frequency: "Annual",
@@ -28,6 +35,12 @@ sap.ui.define([
             
             // Then load data if exists
             this._loadDataFromBackend();
+            
+            // Set up change tracking after initial load
+            setTimeout(function() {
+                this._createInitialSnapshot();
+                this._setupChangeTracking();
+            }.bind(this), 1000);
         },
 
         _initializeDataModel: function() {
@@ -56,6 +69,112 @@ sap.ui.define([
             this.getView().setModel(oModel, "periods");
         },
 
+        _createInitialSnapshot: function() {
+            var oPeriodsModel = this.getView().getModel("periods");
+            var oConfigModel = this.getView().getModel("config");
+            
+            this._initialDataSnapshot = {
+                config: JSON.parse(JSON.stringify(oConfigModel.getData())),
+                periods: JSON.parse(JSON.stringify(oPeriodsModel.getData()))
+            };
+            
+            console.log("Initial data snapshot created");
+        },
+
+        _setupChangeTracking: function() {
+            var oPeriodsModel = this.getView().getModel("periods");
+            var oConfigModel = this.getView().getModel("config");
+            
+            // Track changes in periods model
+            oPeriodsModel.attachPropertyChange(function() {
+                this._hasUnsavedChanges = true;
+                this._updateSaveButtonState();
+            }.bind(this));
+            
+            // Track changes in config model
+            oConfigModel.attachPropertyChange(function() {
+                this._hasUnsavedChanges = true;
+                this._updateSaveButtonState();
+            }.bind(this));
+        },
+
+        _updateSaveButtonState: function() {
+            var oSaveButton = this.byId("saveButton");
+            if (oSaveButton) {
+                oSaveButton.setEnabled(this._hasUnsavedChanges && !this._isSaving);
+                oSaveButton.setText(this._isSaving ? "Saving..." : "Save");
+            }
+        },
+
+        _hasDataChanged: function() {
+            if (!this._initialDataSnapshot) {
+                return false;
+            }
+            
+            var oPeriodsModel = this.getView().getModel("periods");
+            var oConfigModel = this.getView().getModel("config");
+            
+            var currentData = {
+                config: oConfigModel.getData(),
+                periods: oPeriodsModel.getData()
+            };
+            
+            // Compare frequency change
+            if (currentData.config.frequency !== this._initialDataSnapshot.config.frequency) {
+                return true;
+            }
+            
+            // Compare project change
+            if (currentData.config.project.projectId !== this._initialDataSnapshot.config.project.projectId) {
+                return true;
+            }
+            
+            // Compare cell values
+            var currentRows = currentData.periods.rows;
+            var initialRows = this._initialDataSnapshot.periods.rows;
+            
+            for (var i = 0; i < currentRows.length; i++) {
+                var currentCells = currentRows[i].cells;
+                var initialCells = initialRows[i].cells;
+                
+                for (var key in currentCells) {
+                    if (currentCells[key] !== initialCells[key]) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        },
+
+        _hasValidData: function() {
+            var oPeriodsModel = this.getView().getModel("periods");
+            var aRows = oPeriodsModel.getProperty("/rows");
+            var aColumns = oPeriodsModel.getProperty("/columns");
+            
+            // Check if at least one cell has data
+            for (var i = 0; i < aRows.length; i++) {
+                for (var j = 0; j < aColumns.length; j++) {
+                    var sValue = aRows[i].cells[aColumns[j].key];
+                    if (sValue && sValue.trim() !== "") {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        },
+
+        _preventRapidClicks: function() {
+            var currentTime = Date.now();
+            if (currentTime - this._lastSaveTime < 2000) { // 2 second cooldown
+                MessageToast.show("Please wait before saving again");
+                return true;
+            }
+            this._lastSaveTime = currentTime;
+            return false;
+        },
+
         _loadDataFromBackend: function() {
             var oODataModel = this.getOwnerComponent().getModel("npvModel");
             var oConfigModel = this.getView().getModel("config");
@@ -68,6 +187,7 @@ sap.ui.define([
             }
             this._initializeDataModel();
             this._createPeriodTable();
+            
             // Add delay to allow metadata to load
             setTimeout(function() {
                 var oBinding = oODataModel.bindList("/Configurations", null, null, [
@@ -77,26 +197,23 @@ sap.ui.define([
                 oBinding.requestContexts().then(function(aContexts) {
                     if (aContexts.length > 0) {
                         var oConfig = aContexts[0].getObject();
-                        // Update frequency only if it exists in the loaded data
                         if (oConfig.frequency) {
                             oConfigModel.setProperty("/frequency", oConfig.frequency);
                         }
                         this._updateModelWithLoadedData(oConfig.periods ? oConfig.periods : []);
-                        this._createPeriodTable(); // Recreate table to reflect new data
+                        this._createPeriodTable();
                     } else {
-                        // If no data, ensure frequency stays as default "Annual"
                         oConfigModel.setProperty("/frequency", "Annual");
                         this._initializeDataModel();
                         this._createPeriodTable();
                     }
                 }.bind(this)).catch(function(oError) {
                     console.error("Error loading data:", oError);
-                    // Fallback to default frequency and empty structure on error
                     oConfigModel.setProperty("/frequency", "Annual");
                     this._initializeDataModel();
                     this._createPeriodTable();
                 }.bind(this));
-            }.bind(this), 500); // 500ms delay
+            }.bind(this), 500);
         },
 
         _updateModelWithLoadedData: function(aPeriodsData) {
@@ -173,6 +290,8 @@ sap.ui.define([
 
             if (sValue === "") {
                 oContext.getModel().setProperty(oContext.getPath() + "/cells/" + sColumnKey, "");
+                this._hasUnsavedChanges = true;
+                this._updateSaveButtonState();
                 return;
             }
 
@@ -184,19 +303,56 @@ sap.ui.define([
             } else {
                 oInput.setValueState("None");
                 oContext.getModel().setProperty(oContext.getPath() + "/cells/" + sColumnKey, fValue.toString());
+                this._hasUnsavedChanges = true;
+                this._updateSaveButtonState();
             }
         },
 
         onSave: function() {
+            // Prevent multiple saves
+            if (this._isSaving) {
+                MessageToast.show("Save operation is already in progress");
+                return;
+            }
+
+            // Prevent rapid clicking
+            if (this._preventRapidClicks()) {
+                return;
+            }
+
+            // Check if data has actually changed
+            if (!this._hasDataChanged()) {
+                MessageBox.information("No changes detected. Please modify the configuration before saving.", {
+                    title: "No Changes"
+                });
+                return;
+            }
+
+            // Check if there's valid data to save
+            if (!this._hasValidData()) {
+                MessageBox.warning("Please enter at least one percentage value before saving.", {
+                    title: "No Data Entered"
+                });
+                return;
+            }
+
+            // Set saving state
+            this._isSaving = true;
+            this._hasUnsavedChanges = false;
+            this._updateSaveButtonState();
+
             var oPeriodsModel = this.getView().getModel("periods");
             var oConfigModel = this.getView().getModel("config");
+            
             if (!oPeriodsModel || !oConfigModel) {
                 console.error("Required models not found.");
+                this._resetSaveState();
                 return;
             }
         
             var oPeriodsData = oPeriodsModel.getProperty("/rows");
             var aRows = oPeriodsModel.getProperty("/rows");            
+            
             // Validation: For each orig_period, if any value exists where rel_period ≠ orig_period, ensure value = 100 where rel_period = orig_period
             var hasValidationError = false;
             var aOrigPeriods = oPeriodsModel.getProperty("/columns").map(col => col.key);
@@ -221,7 +377,10 @@ sap.ui.define([
             });
         
             if (hasValidationError) {
-                MessageToast.show("Validation failed: Self-intersection of each populated period must be 100%.");
+                MessageBox.error("Validation failed: Self-intersection of each populated period must be 100%.", {
+                    title: "Validation Error"
+                });
+                this._resetSaveState();
                 return;
             }
         
@@ -240,94 +399,76 @@ sap.ui.define([
                 });
             });
         
+            // Always create a new configuration record
             var oPayload = {
                 frequency: oConfigData.frequency,
-                project: { projectId: oConfigData.project.projectId }, // Use current projectId
+                project: { projectId: oConfigData.project.projectId },
                 periods: aPeriodsPayload
             };
+            
             console.log("Payload:", JSON.stringify(oPayload, null, 2));
         
             var oODataModel = this.getOwnerComponent().getModel("npvModel");
             if (!oODataModel) {
                 console.error("OData model not found.");
-                MessageToast.show("Error: OData model not available");
+                MessageBox.error("Error: OData model not available", {
+                    title: "System Error"
+                });
+                this._resetSaveState();
                 return;
             }
         
-            // Check for existing configuration with the current projectId
-            var sProjectId = oConfigData.project.projectId;
-            oODataModel.bindList("/Configurations", null, null, [
-                new sap.ui.model.Filter("project/projectId", sap.ui.model.FilterOperator.EQ, sProjectId)
-            ]).requestContexts().then(function(aContexts) {
-                if (aContexts.length > 0) {
-                    // Update existing configuration
-                    var oContext = aContexts[0]; // Get the context of the matching configuration
-                    var sConfigId = oContext.getObject().ID;
-        
-                    var oBinding = oODataModel.bindContext(`/Configurations(${sConfigId})`);
-                    oBinding.requestObject().then(function(oEntityData) {
-                        oBinding.getBoundContext().setProperty("frequency", oPayload.frequency);
-        
-                        var oPeriodsBinding = oODataModel.bindList(`/Configurations(${sConfigId})/periods`);
-                        oPeriodsBinding.requestContexts().then(function(aPeriodContexts) {
-                            Promise.all(aPeriodContexts.map(ctx => ctx.delete())).then(function() {
-                                Promise.all(oPayload.periods.map(function(period) {
-                                    return oPeriodsBinding.create(period);
-                                })).then(function() {
-                                    oODataModel.submitBatch("updateGroup").then(function() {
-                                        MessageToast.show("Data updated successfully!");
-                                        console.log("Update successful");
-                                    }).catch(function(oError) {
-                                        console.error("Error updating data:", oError);
-                                        MessageToast.show("Failed to update data: " + oError.message);
-                                    });
-                                }).catch(function(oError) {
-                                    console.error("Error creating periods:", oError);
-                                    MessageToast.show("Failed to create periods: " + oError.message);
-                                });
-                            }).catch(function(oError) {
-                                console.error("Error deleting periods:", oError);
-                                MessageToast.show("Failed to delete periods: " + oError.message);
-                            });
-                        }).catch(function(oError) {
-                            console.error("Error managing periods:", oError);
-                            MessageToast.show("Failed to manage periods: " + oError.message);
-                        });
-                    }).catch(function(oError) {
-                        console.error("Error fetching entity data:", oError);
-                        MessageToast.show("Failed to fetch entity data: " + oError.message);
-                    });
-                } else {
-                    // Create new configuration
-                    oODataModel.bindList("/Configurations").create(oPayload, {
-                        success: function() {
-                            MessageToast.show("Data saved successfully!");
-                            console.log("Create successful");
-                        },
-                        error: function(oError) {
-                            console.error("Error saving data:", oError);
-                            MessageToast.show("Failed to save data: " + oError.message);
-                        }
-                    });
-        
-                    oODataModel.submitBatch("updateGroup").then(function() {
-                        console.log("Batch submitted for creation");
-                    }).catch(function(oError) {
-                        console.error("Batch submission failed:", oError);
-                        MessageToast.show("Failed to submit batch: " + oError.message);
-                    });
-                }
+            // Always create new configuration - no checking for existing
+            var oBinding = oODataModel.bindList("/Configurations");
+            var oContext = oBinding.create(oPayload);
+            
+            // Handle success and error
+            oContext.created().then(function() {
+                MessageToast.show("New configuration saved successfully!");
+                console.log("Create successful - new configuration created");
+                this._createInitialSnapshot(); // Update snapshot after successful save
+                this._resetSaveState();
+            }.bind(this)).catch(function(oError) {
+                console.error("Error saving data:", oError);
+                MessageBox.error("Failed to save configuration: " + (oError.message || "Unknown error"), {
+                    title: "Save Error"
+                });
+                this._hasUnsavedChanges = true; // Restore unsaved changes flag
+                this._resetSaveState();
+            }.bind(this));
+
+            // Submit batch
+            oODataModel.submitBatch("updateGroup").then(function() {
+                console.log("Batch submitted for creation");
             }).catch(function(oError) {
-                console.error("Error checking existing configurations:", oError);
-                MessageToast.show("Error accessing service: " + oError.message);
+                console.error("Batch submission failed:", oError);
+                MessageBox.error("Failed to submit changes: " + (oError.message || "Unknown error"), {
+                    title: "Submission Error"
+                });
             });
+        },
+
+        _resetSaveState: function() {
+            this._isSaving = false;
+            this._updateSaveButtonState();
         },
 
         onProjectChange: function(oEvent) {
             var sProjectId = oEvent.getParameter("selectedItem").getKey();
             this.getView().getModel("config").setProperty("/project/projectId", sProjectId);
+            this._hasUnsavedChanges = true;
+            this._updateSaveButtonState();
             this._loadDataFromBackend();
-            this._createPeriodTable(); // Recreate table to reflect new data
+            this._createPeriodTable();
+        },
+
+        // Add browser/navigation warning for unsaved changes
+        onExit: function() {
+            if (this._hasUnsavedChanges) {
+                // This would typically be handled by the router or application controller
+                // for preventing navigation away from unsaved changes
+                console.warn("User is leaving with unsaved changes");
+            }
         }
     });
 });

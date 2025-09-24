@@ -5,29 +5,40 @@
     xmlns:core="sap.ui.core">
     <VBox id="_IDGenVBox2" class="sapUiSmallMargin">
         <Button id="saveButton" text="Save" press=".onSave" class="sapUiTinyMarginTop"/>
+        <Label id="_IDGenLabel2" text="Project"/>
+        <Select
+            id="projectSelect"
+            selectedKey="{config>/project/projectId}"
+            forceSelection="false"
+            change="onProjectChange">
+            <items>
+                <core:Item id="_IDGenItem5" key="MQR" text="MQR"/>
+                <core:Item id="_IDGenItem27" key="MQ" text="MQ"/>
+                <core:Item id="_IDGenItem28" key="MW" text="MW"/>
+                <core:Item id="_IDGenItem29" key="MWV" text="MWV"/>
+                <core:Item id="_IDGenItem30" key="MPE" text="MPE"/>
+                <core:Item id="_IDGenItem31" key="ZAHRA" text="ZAHRA"/>
+            </items>
+        </Select>
         <Label id="_IDGenLabel" text="Frequency" />
         <Select id="frequencySelect" selectedKey="{config>/frequency}" change=".onFrequencyChange">
             <items>
-                <core:Item id="_IDGenItem" key="Annual" text="Annual"/>
-                <core:Item id="_IDGenItem1" key="Semi" text="Semi-Annual"/>
+                <!-- <core:Item id="_IDGenItem" key="Annual" text="Annual"/> -->
+                <!-- <core:Item id="_IDGenItem1" key="Semi" text="Semi-Annual"/> -->
                 <core:Item id="_IDGenItem2" key="Quarter" text="Quarterly"/>
-                <core:Item id="_IDGenItem3" key="Monthly" text="Monthly"/>
-                <core:Item id="_IDGenItem4" key="Daily" text="Daily"/>
+                <!-- <core:Item id="_IDGenItem3" key="Monthly" text="Monthly"/> -->
+                <!-- <core:Item id="_IDGenItem4" key="Daily" text="Daily"/> -->
             </items>
         </Select>
         <ScrollContainer id="_IDGenScrollContainer" horizontal="true" vertical="true" height="700px">
             <Table id="periodsTable" items="{periods>/}">
                 <columns>
-                    <Column id="_IDGenColumn">
-                        <Text id="_IDGenText2" text="Period" />
-                    </Column>
-                    <!-- Dynamic columns for percentages will be added in controller -->
+                    <!-- Columns will be added dynamically by the controller -->
                 </columns>
                 <items>
-                    <ColumnListItem id="_IDGenColumnListItem1">
+                    <ColumnListItem id="_IDGenColumnListItem">
                         <cells>
-                            <Text id="_IDGenText3" text="{periods>periodName}" />
-                            <!-- Dynamic cells will be added in controller -->
+                            <!-- Cells will be added dynamically by the controller -->
                         </cells>
                     </ColumnListItem>
                 </items>

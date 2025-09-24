@@ -23,6 +23,14 @@
                     "annotations": [],
                     "odataVersion": "4.0"
                 }
+            },
+            "cpiService": {
+                "uri": "odata/v4/cpi/",
+                "type": "OData",
+                "settings": {
+                    "annotations": [],
+                    "odataVersion": "4.0"
+                }
             }
         }
     },
@@ -48,7 +56,8 @@
             "minUI5Version": "1.133.0",
             "libs": {
                 "sap.m": {},
-                "sap.ui.core": {}
+                "sap.ui.core": {},
+                "sap.ushell": {}
             }
         },
         "contentDensities": {
@@ -70,6 +79,20 @@
                     "autoExpandSelect": true,
                     "earlyRequests": true
                 }
+            },
+            "cpiModel": {
+                "dataSource": "cpiService",
+                "type": "sap.ui.model.odata.v4.ODataModel",
+                "settings": {
+                    "synchronizationMode": "None",
+                    "operationMode": "Server",
+                    "autoExpandSelect": true,
+                    "earlyRequests": true
+                }
+            },
+            "user": {
+                "type": "sap.ui.model.json.JSONModel",
+                "data": {}
             }
         },
         "resources": {

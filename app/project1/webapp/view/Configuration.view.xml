@@ -17,16 +17,17 @@
                 <core:Item id="_IDGenItem28" key="MW" text="MW"/>
                 <core:Item id="_IDGenItem29" key="MWV" text="MWV"/>
                 <core:Item id="_IDGenItem30" key="MPE" text="MPE"/>
+                <core:Item id="_IDGenItem31" key="ZAHRA" text="ZAHRA"/>
             </items>
         </Select>
         <Label id="_IDGenLabel" text="Frequency" />
         <Select id="frequencySelect" selectedKey="{config>/frequency}" change=".onFrequencyChange">
             <items>
-                <core:Item id="_IDGenItem" key="Annual" text="Annual"/>
-                <core:Item id="_IDGenItem1" key="Semi" text="Semi-Annual"/>
+                <!-- <core:Item id="_IDGenItem" key="Annual" text="Annual"/> -->
+                <!-- <core:Item id="_IDGenItem1" key="Semi" text="Semi-Annual"/> -->
                 <core:Item id="_IDGenItem2" key="Quarter" text="Quarterly"/>
-                <core:Item id="_IDGenItem3" key="Monthly" text="Monthly"/>
-                <core:Item id="_IDGenItem4" key="Daily" text="Daily"/>
+                <!-- <core:Item id="_IDGenItem3" key="Monthly" text="Monthly"/> -->
+                <!-- <core:Item id="_IDGenItem4" key="Daily" text="Daily"/> -->
             </items>
         </Select>
         <ScrollContainer id="_IDGenScrollContainer" horizontal="true" vertical="true" height="700px">

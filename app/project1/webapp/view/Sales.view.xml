@@ -9,56 +9,37 @@
         <form:SimpleForm id="salesForm" editable="true" layout="ResponsiveGridLayout">
             <form:content>
                 <Label id="_IDGenLabel3" text="Project"/>
-                <Select
+                <Input
                     id="projectSelectSales"
-                    selectedKey="{sales>/project/projectId}"
-                    forceSelection="false"
-                    change="onProjectChange">
-                    <items>
-                        <core:Item id="_IDGenItem31" key="" text="Select a project" />
-                    </items>
-                </Select>
-                <Label id="unitNpvLabel" text="Unit NPV"/>
-                <Input id="unitNpvInput" type="Number" value="{sales>/unitNpv}"/>
-                <Label id="discountRateLabel" text="Discount Rate (%)"/>
-                <Input id="discountRateInput" type="Number" value="{sales>/discountRate}"/>
+                    value="{sales>/project/projectId}"
+                    enabled="false"/>
+                <Label id="unitNpvLabel" text="Unit NPV" visible="false"/>
+                <Input id="unitNpvInput" type="Number" value="{sales>/unitNpv}" enabled="false" visible="false"/>
+                <Label id="discountRateLabel" text="Discount Rate (%)" visible="false"/>
+                <Input id="discountRateInput" type="Number" value="{sales>/discountRate}" enabled="false" visible="false"/>
+                <Label id="projectTypeLabel" text="Project Type"/>
+                <Input id="_IDGenInput1" value="{sales>/projectType}" enabled="false"/>
+                <Label id="unitIdLabel" text="Unit ID"/>
+                <Input id="_IDGenInput2" value="{sales>/unitId}" enabled="false"/>
+                <Label id="psIdLabel" text="PS ID"/>
+                <Input id="_IDGenInput3" value="{sales>/psId}" enabled="false"/>
+                <Label id="pcIdLabel" text="PC ID"/>
+                <Input id="pcIdInput" value="{sales>/pcId}" enabled="false"/>
                 <Label id="leadIdLabel" text="Lead ID"/>
-                <Input id="leadIdInput" type="Number" value="{sales>/leadId}"/>
+                <Input id="leadIdInput" type="Number" value="{sales>/leadId}" enabled="false"/>
+                <Label id="_IDGenLabel1" text="Delivery Payment Date"/>
                 <DatePicker
-                id="deliveryPaymentDate"
-                value="{path: 'sales>/deliveryPaymentDate', type: 'sap.ui.model.type.Date', formatOptions: { style: 'medium', UTC: true }}"
-                placeholder="Select Delivery Payment Date"
-                change="onDeliveryDateChange"/>
+                    id="deliveryDate"
+                    value="{sales>/deliveryDate}"
+                    valueFormat="yyyy-MM-dd"
+                    displayFormat="medium"
+                    enabled="false"/>
                 <Label id="pricePlanLabel" text="Price Plan"/>
-                <Select id="pricePlanSelect" selectedKey="{sales>/pricePlan}" change=".onPricePlanChange">
-                    <items>
-                        <core:Item id="_IDGenItem6" key="" text="Select a plan"/>
-                        <core:Item id="_IDGenItem7" key="1YP" text="1YP"/>
-                        <core:Item id="_IDGenItem8" key="2YP" text="2YP"/>
-                        <core:Item id="_IDGenItem9" key="3YP" text="3YP"/>
-                        <core:Item id="_IDGenItem10" key="4YP" text="4YP"/>
-                        <core:Item id="_IDGenItem11" key="5YP" text="5YP"/>
-                        <core:Item id="_IDGenItem12" key="6YP" text="6YP"/>
-                        <core:Item id="_IDGenItem13" key="7YP" text="7YP"/>
-                        <core:Item id="_IDGenItem14" key="8YP" text="8YP"/>
-                        <core:Item id="_IDGenItem15" key="9YP" text="9YP"/>
-                        <core:Item id="_IDGenItem16" key="10YP" text="10YP"/>
-                        <core:Item id="_IDGenItem17" key="11YP" text="11YP"/>
-                        <core:Item id="_IDGenItem18" key="12YP" text="12YP"/>
-                        <core:Item id="_IDGenItem19" key="13YP" text="13YP"/>
-                        <core:Item id="_IDGenItem20" key="14YP" text="14YP"/>
-                        <core:Item id="_IDGenItem21" key="15YP" text="15YP"/>
-                        <core:Item id="_IDGenItem22" key="16YP" text="16YP"/>
-                        <core:Item id="_IDGenItem23" key="17YP" text="17YP"/>
-                        <core:Item id="_IDGenItem24" key="18YP" text="18YP"/>
-                        <core:Item id="_IDGenItem25" key="19YP" text="19YP"/>
-                        <core:Item id="_IDGenItem26" key="20YP" text="20YP"/>
-                    </items>
-                </Select>
+                <Input id="pricePlanSelect" value="{sales>/pricePlan}" enabled="false"/>
                 <Label id="futureValueLabel" text="Future Value"/>
                 <Input id="futureValueInput" value="{sales>/futureValue}" enabled="false"/>
-                <Label id="npvLabel" text="NPV"/>
-                <Input id="npvInput" value="{sales>/npv}" enabled="false"/>
+                <Label id="npvLabel" text="NPV" visible="false"/>
+                <Input id="npvInput" value="{sales>/npv}" enabled="false" visible="false"/>
             </form:content>
         </form:SimpleForm>
 
@@ -80,5 +61,6 @@
         </Table>
 
         <Button id="simulateButton" text="Simulate" press=".onSimulate" class="sapUiSmallMarginTop"/>
+        <Button id="sendToCXButton" text="Send to CX" press=".onSendToCX" enabled="{sales>/isSimulationDone}" class="sapUiSmallMarginTop"/>
     </VBox>
 </mvc:View>
